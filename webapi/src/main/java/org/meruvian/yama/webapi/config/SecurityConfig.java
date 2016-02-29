@@ -22,6 +22,7 @@ import org.meruvian.yama.webapi.interceptor.LoggedInFilter;
 import org.springframework.boot.context.embedded.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -43,9 +44,8 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
  * @author Dian Aditya
  *
  */
-@Configuration
 @EnableWebSecurity
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
 	public static final String LOGIN_PAGE_URL = "/login";
 	public static final String LOGIN_PROCESSING_URL = "/auth/login";
 	public static final String LOGIN_SUCCESS_URL = "/";
@@ -53,53 +53,95 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	public static final String LOGOUT_URL = "/auth/logout";
 	public static final String LOGOUT_SUCCESS_URL = "/login";
 	
-	@Inject
-	private DefaultUserDetailsService userDetailsService;
-	
-	@Inject
-	public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
-		auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
-	}
+	@Configuration
+    @Order(1)
+	public static class CertificateSecurityConfig extends WebSecurityConfigurerAdapter {
+		
+		@Inject
+		private DefaultUserDetailsService userDetailsService;
 
-	@Override
-	protected void configure(HttpSecurity http) throws Exception {
-		http.authorizeRequests()
-				.antMatchers("/").permitAll()
-				.antMatchers("/oauth/authorize").fullyAuthenticated()
+		@Inject
+		public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
+			auth.userDetailsService(userDetailsService);
+		}
+		
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			http
+			.authorizeRequests()
+				.anyRequest().authenticated()
 				.and()
-			.formLogin()
-				.loginPage(LOGIN_PAGE_URL)
-				.loginProcessingUrl(LOGIN_PROCESSING_URL)
-				.usernameParameter("username")
-				.passwordParameter("password")
-				.defaultSuccessUrl(LOGIN_SUCCESS_URL)
-				.failureUrl(LOGIN_FAILURE_URL)
-				.and()
-			.logout()
-				.logoutUrl(LOGOUT_URL)
-				.logoutSuccessUrl(LOGOUT_SUCCESS_URL)
-				.invalidateHttpSession(true)
-				.and()
-			.rememberMe()
+			.x509()
+				.subjectPrincipalRegex("CN=(.*?),")
 				.userDetailsService(userDetailsService)
 				.and()
-			.sessionManagement()
-				.sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
-				.and()
 			.csrf()
-				.requireCsrfProtectionMatcher(new AntPathRequestMatcher("/oauth/authorize"))
 				.disable();
+			
+		}
 	}
-	
-	@Override
-	public void configure(WebSecurity web) throws Exception {
-		web.ignoring()
-				.antMatchers("/oauth/uncache_approvals", "/oauth/cache_approvals")
-				.antMatchers("*.html")
-				.antMatchers("*.js")
-				.antMatchers("*.css")
-				.antMatchers("*.jpg", "*.png", "*.gif")
-				.antMatchers("/bower_components/**");
+
+	@Configuration
+	public static class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+		@Inject
+		private DefaultUserDetailsService userDetailsService;
+		
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			
+			http.authorizeRequests()
+					.antMatchers("/").authenticated()
+					.antMatchers("/oauth/authorize").fullyAuthenticated()
+					.and()
+				.formLogin()
+					.loginPage(LOGIN_PAGE_URL)
+					.loginProcessingUrl(LOGIN_PROCESSING_URL)
+					.usernameParameter("username")
+					.passwordParameter("password")
+					.defaultSuccessUrl(LOGIN_SUCCESS_URL)
+					.failureUrl(LOGIN_FAILURE_URL)
+					.and()
+				.logout()
+					.logoutUrl(LOGOUT_URL)
+					.logoutSuccessUrl(LOGOUT_SUCCESS_URL)
+					.invalidateHttpSession(true)
+					.and()
+				.rememberMe()
+					.userDetailsService(userDetailsService)
+					.and()
+				.sessionManagement()
+					.sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
+					.and()
+				.csrf()
+					.requireCsrfProtectionMatcher(new AntPathRequestMatcher("/oauth/authorize"))
+					.disable();
+		}
+		
+		@Override
+		public void configure(WebSecurity web) throws Exception {
+			web.ignoring()
+					.antMatchers("/oauth/uncache_approvals", "/oauth/cache_approvals")
+					.antMatchers("*.html")
+					.antMatchers("*.js")
+					.antMatchers("*.css")
+					.antMatchers("*.jpg", "*.png", "*.gif")
+					.antMatchers("/bower_components/**");
+		}
+		
+		@Override
+		@Bean
+		public AuthenticationManager authenticationManagerBean() throws Exception {
+			return super.authenticationManagerBean();
+		}
+		@Bean
+		public PasswordEncoder passwordEncoder() {
+			return new StandardPasswordEncoder("yama");
+		}
+		
+		@Bean
+		public TextEncryptor textEncryptor() {
+			return Encryptors.noOpText();
+		}
 	}
 	
 	@Configuration
@@ -111,12 +153,6 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		}
 	}
 	
-	@Override
-	@Bean
-	public AuthenticationManager authenticationManagerBean() throws Exception {
-		return super.authenticationManagerBean();
-	}
-	
 	@Bean
 	public FilterRegistrationBean loggedInFilter() {
 		FilterRegistrationBean filter = new FilterRegistrationBean(new LoggedInFilter());
@@ -125,13 +161,4 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 		return filter;
 	}
 	
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new StandardPasswordEncoder("yama");
-	}
-	
-	@Bean
-	public TextEncryptor textEncryptor() {
-		return Encryptors.noOpText();
-	}
 }

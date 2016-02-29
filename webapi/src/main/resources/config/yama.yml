@@ -6,3 +6,10 @@ spring:
 
 management:
     context-path: /api/actuator
+
+truststore:
+    file: ca.jks
+    pass: password
+keystore:
+    file: server.p12
+    pass: password

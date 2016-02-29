@@ -72,6 +72,7 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
 				.antMatchers("/api/users", "/api/users/**").hasAuthority("ADMINISTRATOR")
 				.antMatchers("/api/oauth/clients/**").permitAll()
 				.antMatchers("/api/signup").anonymous()
+				.antMatchers("/certificate_login").permitAll()
 				.antMatchers("/**").fullyAuthenticated()
 				.and()
 			.sessionManagement()

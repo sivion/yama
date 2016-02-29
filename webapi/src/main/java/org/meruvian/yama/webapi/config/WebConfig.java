@@ -50,7 +50,8 @@ public class WebConfig extends WebMvcConfigurerAdapter {
 	public void addViewControllers(ViewControllerRegistry registry) {
 		log.debug("Configure view controllers");
 		super.addViewControllers(registry);
-		
+
+		registry.addViewController("/certificate_login").setViewName("forward:/certificate_login.html");
 		registry.addViewController("/login").setViewName("forward:/login.html");
 		registry.addViewController("/register").setViewName("forward:/register.html");
 		registry.addRedirectViewController("/oauth/approval", "/oauth_approval").setKeepQueryParams(true);

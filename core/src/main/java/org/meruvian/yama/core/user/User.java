@@ -52,6 +52,7 @@ public class User extends DefaultPersistence {
 	private Address address = new Address();
 	private FileInfo fileInfo;
 	private List<UserRole> roles = new ArrayList<UserRole>();
+	private String certificate;
 	
 	@NotNull
 	@Size(min = 6)
@@ -119,5 +120,13 @@ public class User extends DefaultPersistence {
 
 	public void setRoles(List<UserRole> roles) {
 		this.roles = roles;
+	}
+
+	public String getCertificate() {
+		return certificate;
+	}
+
+	public void setCertificate(String certificate) {
+		this.certificate = certificate;
 	}
 }
